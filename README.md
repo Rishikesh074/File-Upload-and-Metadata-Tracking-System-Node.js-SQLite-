@@ -72,7 +72,8 @@ new_Prj/
 
 ## 📸 Screenshots
 
-> *(Optional: Add screenshots or a demo GIF here to show the UI and file table)*
+<img width="1866" height="845" alt="image" src="https://github.com/user-attachments/assets/293996f6-c21d-4b84-86d3-15d01d3df556" />
+
 
 ---
 
