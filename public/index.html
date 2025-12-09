@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>File Uploads | Portfolio Module</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Base CSS -->
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="container">
+      <h1>Portfolio File Uploads</h1>
+      <p class="subtitle">Upload files, track metadata, and download—clean, practical workflow.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Upload a file</h2>
+      <div class="form-row">
+        <input type="file" id="fileInput" aria-label="Choose file">
+        <button id="uploadBtn" class="btn btn-primary">Upload</button>
+      </div>
+      <p id="statusMsg" class="status"></p>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Uploaded files</h2>
+        <button id="refreshBtn" class="btn btn-secondary">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Size</th>
+              <th>Uploaded</th>
+              <th>Download</th>
+            </tr>
+          </thead>
+          <tbody id="fileTable">
+            <tr>
+              <td colspan="5" class="muted">No files yet. Upload to see entries here.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="container">
+      <small>Built with HTML, CSS, JavaScript, Node.js, Express, Multer, and SQLite.</small>
+    </div>
+  </footer>
+
+  <script>
+    const statusMsg = document.getElementById('statusMsg');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const fileTable = document.getElementById('fileTable');
+
+    uploadBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        setStatus('Please choose a file to upload.', 'warn');
+        return;
+      }
+
+      setStatus('Uploading…', 'info');
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Upload failed');
+        }
+
+        setStatus('Upload successful.', 'success');
+        fileInput.value = '';
+        await loadFiles();
+      } catch (err) {
+        setStatus('Upload failed. ' + err.message, 'error');
+      }
+    });
+
+    refreshBtn.addEventListener('click', loadFiles);
+
+    function setStatus(msg, level = 'info') {
+      statusMsg.textContent = msg;
+      statusMsg.className = 'status ' + level;
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      const kb = bytes / 1024;
+      if (kb < 1024) return kb.toFixed(1) + ' KB';
+      const mb = kb / 1024;
+      return mb.toFixed(1) + ' MB';
+    }
+
+    async function loadFiles() {
+      try {
+        const res = await fetch('/files');
+        const files = await res.json();
+
+        fileTable.innerHTML = '';
+
+        if (!files.length) {
+          fileTable.innerHTML = '<tr><td colspan="5" class="muted">No files found.</td></tr>';
+          return;
+        }
+
+        const rows = files.map(f => {
+          const downloadUrl = `/uploads/${encodeURIComponent(f.stored_name)}`;
+          return `
+            <tr>
+              <td title="${escapeHtml(f.original_name)}">${escapeHtml(f.original_name)}</td>
+              <td>${escapeHtml(f.mime_type)}</td>
+              <td>${formatSize(f.size_bytes)}</td>
+              <td>${escapeHtml(f.uploaded_at)}</td>
+              <td><a class="link" href="${downloadUrl}" download>Download</a></td>
+            </tr>
+          `;
+        }).join('');
+
+        fileTable.innerHTML = rows;
+      } catch (err) {
+        fileTable.innerHTML = '<tr><td colspan="5" class="error">Failed to load files.</td></tr>';
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Initial load
+    loadFiles();
+  </script>
+</body>
+</html>
